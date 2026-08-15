@@ -33,13 +33,13 @@
         let currentTxId = "";
 
         async function getBalance() {
-            const r = await fetch(`http://localhost:8080/balance/${myId}`);
+            const r = await fetch(`/balance/${myId}`);
             const d = await r.json();
             document.getElementById('balDisplay').innerText = `₦${d.balance || "0.00"}`;
         }
 
         async function initiate() {
-            const res = await fetch('http://localhost:8080/transfer/initiate', {
+            const res = await fetch('/transfer/initiate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Bank-PIN': document.getElementById('pin').value },
                 body: JSON.stringify({
@@ -60,7 +60,7 @@
         }
 
         async function settle() {
-            await fetch(`http://localhost:8080/transfer/settle/${currentTxId}`, { 
+            await fetch(`/transfer/settle/${currentTxId}`, { 
                 method: 'POST',
                 headers: { 'X-Bank-PIN': document.getElementById('pin').value }
             });
