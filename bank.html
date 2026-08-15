@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Secure Termux Bank</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: sans-serif; background: #111827; color: white; padding: 20px; text-align: center;}
+        .card { background: #1f2937; padding: 25px; border-radius: 20px; box-shadow: 0 10px 15px rgba(0,0,0,0.5); max-width: 400px; margin: auto; border: 1px solid #374151;}
+        .balance { font-size: 2.5rem; color: #10b981; margin: 10px 0; font-weight: 800; }
+        input { width: 90%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #374151; background: #374151; color: white; }
+        button { width: 95%; padding: 15px; background: #3b82f6; color: white; border: none; border-radius: 10px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        #settleBox { display: none; background: #451a03; padding: 15px; border-radius: 10px; margin-top: 20px; border: 1px solid #92400e; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h3 style="color:#9ca3af">Total Balance</h3>
+        <div id="balDisplay" class="balance">₦0.00</div>
+        
+        <input id="pin" type="password" placeholder="Enter 4-Digit PIN">
+        <input id="recipientId" placeholder="Recipient Account ID">
+        <input id="amountInput" type="number" placeholder="Amount ₦">
+        <button onclick="initiate()">Secure Send</button>
+
+        <div id="settleBox">
+            <p style="color:#f59e0b">Status: Escrow (In-Flight)</p>
+            <button style="background:#d97706" onclick="settle()">Settle Payment</button>
+        </div>
+    </div>
+
+    <script>
+        const myId = "c0a80001-0000-0000-0000-000000000001";
+        let currentTxId = "";
+
+        async function getBalance() {
+            const r = await fetch(`http://localhost:8080/balance/${myId}`);
+            const d = await r.json();
+            document.getElementById('balDisplay').innerText = `₦${d.balance || "0.00"}`;
+        }
+
+        async function initiate() {
+            const res = await fetch('http://localhost:8080/transfer/initiate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Bank-PIN': document.getElementById('pin').value },
+                body: JSON.stringify({
+                    from: myId,
+                    to: document.getElementById('recipientId').value,
+                    amount: document.getElementById('amountInput').value,
+                    idem: Math.random().toString()
+                })
+            });
+            const data = await res.json();
+            if(data.tx_id) {
+                currentTxId = data.tx_id;
+                document.getElementById('settleBox').style.display = 'block';
+                getBalance();
+            } else {
+                alert(data.error);
+            }
+        }
+
+        async function settle() {
+            await fetch(`http://localhost:8080/transfer/settle/${currentTxId}`, { 
+                method: 'POST',
+                headers: { 'X-Bank-PIN': document.getElementById('pin').value }
+            });
+            document.getElementById('settleBox').style.display = 'none';
+            alert("Settled Successfully!");
+            getBalance();
+        }
+        getBalance();
+    </script>
+</body>
+</html>
