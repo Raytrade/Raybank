@@ -1,58 +1,5 @@
 package main
-import (
-	"context"
-	"os"
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/shopspring/decimal"
-)
-const SuspenseAccount = "ffffffff-ffff-ffff-ffff-ffffffffffff"
-
-func main() {
-	ctx := context.Background()
-	dbUrl := os.Getenv("DATABASE_URL")
-	if dbUrl == "" {
-		dbUrl = "postgres://localhost:5432/fintech_ledger?sslmode=disable"
-	}
-	db, _ := pgxpool.New(ctx, dbUrl)
-	r := gin.Default()
-	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Bank-PIN")
-		if c.Request.Method == "OPTIONS" { c.AbortWithStatus(204); return }
-		c.Next()
-	})
-	r.GET("/balance/:id", func(c *gin.Context) {
-		var b decimal.Decimal
-		db.QueryRow(ctx, "SELECT COALESCE(SUM(amount), 0) FROM ledger_entries WHERE account_id = $1", c.Param("id")).Scan(&b)
-		c.JSON(200, gin.H{"balance": b.StringFixed(2)})
-	})
-	r.POST("/transfer/initiate", func(c *gin.Context) {
-		var req struct{ From, To, Amount, Idem string }
-		c.BindJSON(&req)
-		amt, _ := decimal.NewFromString(req.Amount)
-		txID := uuid.New().String()
-		tx, _ := db.Begin(ctx)
-		defer tx.Rollback(ctx)
-		tx.Exec(ctx, "INSERT INTO ledger_entries (transaction_id, account_id, amount, currency) VALUES ($1, $2, $3, 'NGN')", txID, req.From, amt.Neg())
-		tx.Exec(ctx, "INSERT INTO ledger_entries (transaction_id, account_id, amount, currency) VALUES ($1, $2, $3, 'NGN')", txID, SuspenseAccount, amt)
-		tx.Exec(ctx, "INSERT INTO transactions (id, idempotency_key, type, status, source_account_id, destination_account_id, amount, currency) VALUES
-git add main.go
-git commit -m "Fix: Remove unused fmt import for production build"
-git push origin main
-cd $HOME/fintech-app
-cat > main.go <<'EOF'
-package main
-import (
-	"context"
-	"os"
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/shopspring/decimal"
-)
+import ("context";"os";"github.com/gin-gonic/gin";"github.com/google/uuid";"github.com/jackc/pgx/v5/pgxpool";"github.com/shopspring/decimal")
 const Suspense = "ffffffff-ffff-ffff-ffff-ffffffffffff"
 func main() {
 	ctx := context.Background()
